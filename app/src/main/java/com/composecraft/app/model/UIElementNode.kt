@@ -95,6 +95,18 @@ data class UIElementNode(
                     waveformColorHex = "#00F2FE",
                     animationSpeedMs = 800
                 )
+                UIElementType.SHIMMER_BOX -> ElementProperties(
+                    widthMode = "FILL",
+                    cornerRadius = 16,
+                    heightMode = "WRAP"
+                )
+                UIElementType.ROTATING_BORDER_CARD -> ElementProperties(
+                    backgroundColorHex = "#0F172A",
+                    orbColorPrimaryHex = "#00F2FE",
+                    orbColorSecondaryHex = "#7F00FF",
+                    cornerRadius = 20,
+                    widthMode = "FILL"
+                )
                 UIElementType.PULSE_CONTAINER -> ElementProperties(
                     backgroundColorHex = "#1E1B4B",
                     cornerRadius = 24,
@@ -103,6 +115,41 @@ data class UIElementNode(
                     borderColorHex = "#6366F1",
                     paddingHorizontal = 20,
                     paddingVertical = 20,
+                    widthMode = "FILL"
+                )
+                UIElementType.SLIDE_TO_ACTION -> ElementProperties(
+                    text = "Slide to confirm >>",
+                    backgroundColorHex = "#1E293B",
+                    orbColorPrimaryHex = "#00F2FE",
+                    widthMode = "WRAP",
+                    heightMode = "WRAP",
+                    actionType = "TOAST",
+                    actionTarget = "Action confirmed via slide bar! 🚀"
+                )
+                UIElementType.FLOATING_NAV_BAR -> ElementProperties(
+                    backgroundColorHex = "#0F172A",
+                    orbColorPrimaryHex = "#00F2FE",
+                    widthMode = "FILL"
+                )
+                UIElementType.SEGMENTED_TABS -> ElementProperties(
+                    backgroundColorHex = "#1E293B",
+                    orbColorSecondaryHex = "#4F46E5",
+                    widthMode = "FILL"
+                )
+                UIElementType.SIDE_DRAWER_PREVIEW -> ElementProperties(
+                    backgroundColorHex = "#0F172A",
+                    orbColorPrimaryHex = "#00F2FE",
+                    widthMode = "FILL"
+                )
+                UIElementType.GRADIENT_BUTTON -> ElementProperties(
+                    text = "✨ Upgrade to Pro",
+                    backgroundColorHex = "#4F46E5",
+                    textColorHex = "#FFFFFF",
+                    cornerRadius = 16,
+                    paddingVertical = 14,
+                    paddingHorizontal = 24,
+                    fontSize = 16,
+                    fontWeight = "Bold",
                     widthMode = "FILL"
                 )
                 UIElementType.TEXT -> ElementProperties(

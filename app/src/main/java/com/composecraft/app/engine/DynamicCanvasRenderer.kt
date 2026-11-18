@@ -1,5 +1,6 @@
 package com.composecraft.app.engine
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -69,18 +71,20 @@ fun DynamicCanvasRenderer(
     }
 
     // Apply Corner Radius Clip
-    if (props.cornerRadius > 0) {
+    if (props.cornerRadius > 0 && node.type != UIElementType.ROTATING_BORDER_CARD) {
         baseModifier = baseModifier.clip(RoundedCornerShape(props.cornerRadius.dp))
     }
 
-    // Apply Background Color
-    val bgColor = parseHexColor(props.backgroundColorHex)
-    if (bgColor != Color.Transparent) {
-        baseModifier = baseModifier.background(bgColor)
+    // Apply Background Color (except specialized widgets which handle their own gradients)
+    if (node.type !in listOf(UIElementType.ROTATING_BORDER_CARD, UIElementType.SLIDE_TO_ACTION, UIElementType.FLOATING_NAV_BAR, UIElementType.SEGMENTED_TABS)) {
+        val bgColor = parseHexColor(props.backgroundColorHex)
+        if (bgColor != Color.Transparent) {
+            baseModifier = baseModifier.background(bgColor)
+        }
     }
 
     // Apply Border
-    if (props.borderWidth > 0) {
+    if (props.borderWidth > 0 && node.type != UIElementType.ROTATING_BORDER_CARD) {
         val borderColor = parseHexColor(props.borderColorHex, Color.Gray)
         baseModifier = baseModifier.border(
             width = props.borderWidth.dp,
@@ -128,6 +132,38 @@ fun DynamicCanvasRenderer(
                 )
             }
 
+            UIElementType.SHIMMER_BOX -> {
+                ShimmerLoadingWidget(
+                    properties = props,
+                    modifier = Modifier.clickable(enabled = isDesignMode) { onSelectNode(node) }
+                )
+            }
+
+            UIElementType.ROTATING_BORDER_CARD -> {
+                RotatingBorderCardWidget(
+                    properties = props,
+                    modifier = Modifier.clickable(enabled = isDesignMode) { onSelectNode(node) }
+                ) {
+                    if (node.children.isEmpty() && isDesignMode) {
+                        EmptyContainerPlaceholder("✨ Animated Border Card (Drop widgets inside)")
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(props.spacingDp.dp)) {
+                            node.children.forEach { child ->
+                                DynamicCanvasRenderer(
+                                    node = child,
+                                    isDesignMode = isDesignMode,
+                                    selectedNodeId = selectedNodeId,
+                                    isFreeFormMode = isFreeFormMode,
+                                    onSelectNode = onSelectNode,
+                                    onMoveNode = onMoveNode,
+                                    onActionTriggered = onActionTriggered
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             UIElementType.PULSE_CONTAINER -> {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -148,6 +184,90 @@ fun DynamicCanvasRenderer(
                                 onActionTriggered = onActionTriggered
                             )
                         }
+                    }
+                }
+            }
+
+            // Advanced Navigation Styles 🧭
+            UIElementType.FLOATING_NAV_BAR -> {
+                FloatingIslandNavBarWidget(
+                    properties = props,
+                    modifier = Modifier.clickable(enabled = isDesignMode) { onSelectNode(node) },
+                    onTabSelected = { tabIdx ->
+                        if (!isDesignMode) {
+                            onActionTriggered("TOAST", "Tab $tabIdx Selected!")
+                        }
+                    }
+                )
+            }
+
+            UIElementType.SEGMENTED_TABS -> {
+                SegmentedTabsWidget(
+                    properties = props,
+                    modifier = Modifier.clickable(enabled = isDesignMode) { onSelectNode(node) },
+                    onTabSelected = { tabIdx ->
+                        if (!isDesignMode) {
+                            onActionTriggered("TOAST", "Category Tab $tabIdx switched")
+                        }
+                    }
+                )
+            }
+
+            UIElementType.SIDE_DRAWER_PREVIEW -> {
+                SideDrawerPreviewWidget(
+                    properties = props,
+                    modifier = Modifier.clickable(enabled = isDesignMode) { onSelectNode(node) }
+                )
+            }
+
+            // Interactive Sliders & Action Bars ⚡
+            UIElementType.SLIDE_TO_ACTION -> {
+                SlideToActionWidget(
+                    properties = props,
+                    isDesignMode = isDesignMode,
+                    modifier = Modifier.clickable(enabled = isDesignMode) { onSelectNode(node) },
+                    onActionCompleted = { targetMsg ->
+                        onActionTriggered(props.actionType, targetMsg)
+                    }
+                )
+            }
+
+            // Specialized Buttons & Cards 🎨
+            UIElementType.GRADIENT_BUTTON -> {
+                val primaryGrad = parseHexColor(props.orbColorPrimaryHex, Color(0xFF00F2FE))
+                val secondaryGrad = parseHexColor(props.orbColorSecondaryHex, Color(0xFF4FACFE))
+
+                Button(
+                    onClick = {
+                        if (!isDesignMode) {
+                            onActionTriggered(props.actionType, props.actionTarget)
+                        } else {
+                            onSelectNode(node)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    contentPadding = PaddingValues(0.dp),
+                    shape = RoundedCornerShape(props.cornerRadius.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(8.dp, RoundedCornerShape(props.cornerRadius.dp))
+                        .background(
+                            Brush.horizontalGradient(listOf(primaryGrad, secondaryGrad)),
+                            RoundedCornerShape(props.cornerRadius.dp)
+                        )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 14.dp, horizontal = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = props.text,
+                            fontSize = props.fontSize.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = parseHexColor(props.textColorHex, Color(0xFF0F172A))
+                        )
                     }
                 }
             }
@@ -593,6 +713,9 @@ fun resolveMaterialIcon(iconName: String): ImageVector {
         "lock" -> Icons.Default.Lock
         "shoppingcart", "shoppingbag" -> Icons.Default.ShoppingCart
         "arrowback" -> Icons.Default.ArrowBack
+        "menu" -> Icons.Default.Menu
+        "dock" -> Icons.Default.Dock
+        "swipe" -> Icons.Default.Swipe
         else -> Icons.Default.Star
     }
 }

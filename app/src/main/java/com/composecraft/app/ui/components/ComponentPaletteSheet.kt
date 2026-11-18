@@ -73,7 +73,12 @@ fun ComponentPaletteSheet(
                                 text = category.title,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (category == WidgetCategory.ANIMATIONS) Color(0xFF00F2FE) else Color(0xFF818CF8),
+                                color = when (category) {
+                                    WidgetCategory.ANIMATIONS -> Color(0xFF00F2FE)
+                                    WidgetCategory.NAVIGATION -> Color(0xFF38EF7D)
+                                    WidgetCategory.CONTROLS -> Color(0xFFFBBF24)
+                                    else -> Color(0xFF818CF8)
+                                },
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
                         }
@@ -111,9 +116,8 @@ fun ComponentTile(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val isSpecial = type.category == WidgetCategory.ANIMATIONS
+    val isSpecial = type.category == WidgetCategory.ANIMATIONS || type.category == WidgetCategory.NAVIGATION || type == UIElementType.SLIDE_TO_ACTION
     val bgColor = if (isSpecial) Color(0xFF1E1B4B) else Color(0xFF1E293B)
-    val borderColor = if (isSpecial) Color(0xFF00F2FE).copy(alpha = 0.6f) else Color(0xFF334155)
 
     Row(
         modifier = modifier
@@ -127,13 +131,25 @@ fun ComponentTile(
             modifier = Modifier
                 .size(36.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(if (isSpecial) Color(0xFF00F2FE).copy(alpha = 0.2f) else Color(0xFF334155)),
+                .background(
+                    when (type.category) {
+                        WidgetCategory.ANIMATIONS -> Color(0xFF00F2FE).copy(alpha = 0.2f)
+                        WidgetCategory.NAVIGATION -> Color(0xFF38EF7D).copy(alpha = 0.2f)
+                        WidgetCategory.CONTROLS -> Color(0xFFFBBF24).copy(alpha = 0.2f)
+                        else -> Color(0xFF334155)
+                    }
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = resolvePaletteIcon(type),
                 contentDescription = type.displayName,
-                tint = if (isSpecial) Color(0xFF00F2FE) else Color(0xFF818CF8),
+                tint = when (type.category) {
+                    WidgetCategory.ANIMATIONS -> Color(0xFF00F2FE)
+                    WidgetCategory.NAVIGATION -> Color(0xFF38EF7D)
+                    WidgetCategory.CONTROLS -> Color(0xFFFBBF24)
+                    else -> Color(0xFF818CF8)
+                },
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -162,24 +178,36 @@ fun resolvePaletteIcon(type: UIElementType): ImageVector {
     return when (type) {
         UIElementType.GLOWING_ORB -> Icons.Default.Animation
         UIElementType.WAVEFORM -> Icons.Default.GraphicEq
+        UIElementType.SHIMMER_BOX -> Icons.Default.AutoAwesome
+        UIElementType.ROTATING_BORDER_CARD -> Icons.Default.CropSquare
         UIElementType.PULSE_CONTAINER -> Icons.Default.BlurOn
+
+        UIElementType.FLOATING_NAV_BAR -> Icons.Default.Dock
+        UIElementType.SEGMENTED_TABS -> Icons.Default.ViewColumn
+        UIElementType.SIDE_DRAWER_PREVIEW -> Icons.Default.MenuOpen
+        UIElementType.TOP_APP_BAR -> Icons.Default.WebAsset
+        UIElementType.BOTTOM_NAV_BAR -> Icons.Default.CallToAction
+        UIElementType.FLOATING_ACTION_BUTTON -> Icons.Default.AddCircle
+
+        UIElementType.SLIDE_TO_ACTION -> Icons.Default.Swipe
+        UIElementType.SWITCH -> Icons.Default.ToggleOn
+        UIElementType.CHECKBOX -> Icons.Default.CheckBox
+        UIElementType.SLIDER -> Icons.Default.LinearScale
+
+        UIElementType.GRADIENT_BUTTON -> Icons.Default.SmartButton
+        UIElementType.BUTTON -> Icons.Default.SmartButton
+        UIElementType.OUTLINED_BUTTON -> Icons.Default.CheckBoxOutlineBlank
+        UIElementType.TEXT -> Icons.Default.Title
+        UIElementType.TEXT_FIELD -> Icons.Default.Edit
+        UIElementType.IMAGE -> Icons.Default.Image
+        UIElementType.ICON -> Icons.Default.Star
+
         UIElementType.COLUMN -> Icons.Default.ViewColumn
         UIElementType.ROW -> Icons.Default.ViewStream
         UIElementType.BOX -> Icons.Default.Layers
         UIElementType.CARD -> Icons.Default.CropOriginal
-        UIElementType.TEXT -> Icons.Default.Title
-        UIElementType.BUTTON -> Icons.Default.SmartButton
-        UIElementType.OUTLINED_BUTTON -> Icons.Default.CheckBoxOutlineBlank
-        UIElementType.TEXT_FIELD -> Icons.Default.Edit
-        UIElementType.IMAGE -> Icons.Default.Image
-        UIElementType.ICON -> Icons.Default.Star
-        UIElementType.SWITCH -> Icons.Default.ToggleOn
-        UIElementType.CHECKBOX -> Icons.Default.CheckBox
-        UIElementType.SLIDER -> Icons.Default.LinearScale
+
         UIElementType.SPACER -> Icons.Default.SpaceBar
         UIElementType.DIVIDER -> Icons.Default.HorizontalRule
-        UIElementType.TOP_APP_BAR -> Icons.Default.WebAsset
-        UIElementType.BOTTOM_NAV_BAR -> Icons.Default.CallToAction
-        UIElementType.FLOATING_ACTION_BUTTON -> Icons.Default.AddCircle
     }
 }
