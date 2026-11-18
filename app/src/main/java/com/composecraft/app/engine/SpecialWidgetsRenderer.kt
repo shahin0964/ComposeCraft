@@ -343,7 +343,7 @@ fun RotatingBorderCardWidget(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(properties.cornerRadius.dp - 2))
+                .clip(RoundedCornerShape((properties.cornerRadius - 2).coerceAtLeast(0).dp))
                 .background(parseHexColor(properties.backgroundColorHex, Color(0xFF0F172A)))
                 .padding(16.dp)
         ) {
