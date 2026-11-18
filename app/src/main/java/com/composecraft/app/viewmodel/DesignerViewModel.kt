@@ -1,18 +1,31 @@
 package com.composecraft.app.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import com.composecraft.app.engine.ProjectStorage
 import com.composecraft.app.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-class DesignerViewModel : ViewModel() {
+class DesignerViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _project = MutableStateFlow(ProjectTemplates.createAIAssistantTemplate())
+    private val context = application.applicationContext
+
+    // Screen Route: "home" or "editor"
+    private val _currentRoute = MutableStateFlow("home")
+    val currentRoute: StateFlow<String> = _currentRoute.asStateFlow()
+
+    // Saved projects list
+    private val _savedProjects = MutableStateFlow<List<AppProject>>(emptyList())
+    val savedProjects: StateFlow<List<AppProject>> = _savedProjects.asStateFlow()
+
+    // Currently opened project
+    private val _project = MutableStateFlow<AppProject>(AppProject.createBlank("My App", "com.example.myapp"))
     val project: StateFlow<AppProject> = _project.asStateFlow()
 
-    private val _selectedNodeId = MutableStateFlow<String?>("login_root")
+    private val _selectedNodeId = MutableStateFlow<String?>(null)
     val selectedNodeId: StateFlow<String?> = _selectedNodeId.asStateFlow()
 
     private val _isDesignMode = MutableStateFlow(true)
@@ -25,8 +38,76 @@ class DesignerViewModel : ViewModel() {
     private val undoStack = mutableListOf<AppProject>()
     private val redoStack = mutableListOf<AppProject>()
 
+    init {
+        refreshProjects()
+    }
+
+    fun refreshProjects() {
+        val loaded = ProjectStorage.loadAllProjects(context)
+        _savedProjects.value = loaded
+    }
+
     val selectedNode: UIElementNode?
         get() = _selectedNodeId.value?.let { id -> _project.value.currentScreen.rootNode.findNode(id) }
+
+    fun createNewBlankProject(name: String, packageName: String) {
+        val newProj = AppProject.createBlank(name, packageName)
+        ProjectStorage.saveProject(context, newProj)
+        _project.value = newProj
+        _selectedNodeId.value = newProj.currentScreen.rootNode.id
+        undoStack.clear()
+        redoStack.clear()
+        refreshProjects()
+        _currentRoute.value = "editor"
+    }
+
+    fun openProject(proj: AppProject) {
+        _project.value = proj
+        _selectedNodeId.value = proj.currentScreen.rootNode.id
+        undoStack.clear()
+        redoStack.clear()
+        _currentRoute.value = "editor"
+    }
+
+    fun cloneSampleProject(sample: AppProject) {
+        val cloned = sample.copy(
+            id = java.util.UUID.randomUUID().toString(),
+            name = "${sample.name} (Copy)",
+            updatedAtTimestamp = System.currentTimeMillis()
+        )
+        ProjectStorage.saveProject(context, cloned)
+        _project.value = cloned
+        _selectedNodeId.value = cloned.currentScreen.rootNode.id
+        undoStack.clear()
+        redoStack.clear()
+        refreshProjects()
+        _currentRoute.value = "editor"
+    }
+
+    fun importProjectFromJson(jsonString: String): Boolean {
+        val parsed = ProjectStorage.parseProjectFromJson(jsonString) ?: return false
+        val newProj = parsed.copy(
+            id = java.util.UUID.randomUUID().toString(),
+            name = "${parsed.name} (Imported)",
+            updatedAtTimestamp = System.currentTimeMillis()
+        )
+        ProjectStorage.saveProject(context, newProj)
+        refreshProjects()
+        openProject(newProj)
+        return true
+    }
+
+    fun deleteSavedProject(projectId: String) {
+        ProjectStorage.deleteProject(context, projectId)
+        refreshProjects()
+    }
+
+    fun navigateToHome() {
+        // Auto-save on exit
+        ProjectStorage.saveProject(context, _project.value)
+        refreshProjects()
+        _currentRoute.value = "home"
+    }
 
     fun selectNode(id: String?) {
         _selectedNodeId.value = id
@@ -49,11 +130,16 @@ class DesignerViewModel : ViewModel() {
         redoStack.clear()
     }
 
+    private fun persistProject() {
+        ProjectStorage.saveProject(context, _project.value)
+    }
+
     fun undo() {
         if (undoStack.isNotEmpty()) {
             val last = undoStack.removeAt(undoStack.lastIndex)
             redoStack.add(_project.value)
             _project.value = last
+            persistProject()
         }
     }
 
@@ -62,6 +148,7 @@ class DesignerViewModel : ViewModel() {
             val next = redoStack.removeAt(redoStack.lastIndex)
             undoStack.add(_project.value)
             _project.value = next
+            persistProject()
         }
     }
 
@@ -76,6 +163,7 @@ class DesignerViewModel : ViewModel() {
         val updatedRoot = _project.value.currentScreen.rootNode.updateNode(updatedNode)
         val updatedScreen = _project.value.currentScreen.copy(rootNode = updatedRoot)
         _project.update { it.updateScreen(updatedScreen) }
+        persistProject()
     }
 
     fun updateNodeName(newName: String) {
@@ -85,6 +173,7 @@ class DesignerViewModel : ViewModel() {
         val updatedRoot = _project.value.currentScreen.rootNode.updateNode(updatedNode)
         val updatedScreen = _project.value.currentScreen.copy(rootNode = updatedRoot)
         _project.update { it.updateScreen(updatedScreen) }
+        persistProject()
     }
 
     fun addElement(type: UIElementType, containerId: String? = null) {
@@ -98,6 +187,7 @@ class DesignerViewModel : ViewModel() {
         val updatedScreen = _project.value.currentScreen.copy(rootNode = updatedRoot)
         _project.update { it.updateScreen(updatedScreen) }
         _selectedNodeId.value = newNode.id
+        persistProject()
     }
 
     fun deleteSelectedNode() {
@@ -108,6 +198,7 @@ class DesignerViewModel : ViewModel() {
         val updatedScreen = _project.value.currentScreen.copy(rootNode = updatedRoot)
         _project.update { it.updateScreen(updatedScreen) }
         _selectedNodeId.value = null
+        persistProject()
     }
 
     fun duplicateSelectedNode() {
@@ -119,6 +210,7 @@ class DesignerViewModel : ViewModel() {
         val updatedScreen = _project.value.currentScreen.copy(rootNode = updatedRoot)
         _project.update { it.updateScreen(updatedScreen) }
         _selectedNodeId.value = duplicated.id
+        persistProject()
     }
 
     fun moveNodeFreeForm(nodeId: String, newX: Float, newY: Float) {
@@ -128,6 +220,7 @@ class DesignerViewModel : ViewModel() {
         val updatedRoot = _project.value.currentScreen.rootNode.updateNode(updatedNode)
         val updatedScreen = _project.value.currentScreen.copy(rootNode = updatedRoot)
         _project.update { it.updateScreen(updatedScreen) }
+        persistProject()
     }
 
     fun switchScreen(screenId: String) {
@@ -139,17 +232,13 @@ class DesignerViewModel : ViewModel() {
         saveSnapshot()
         _project.update { it.addScreen(name) }
         _selectedNodeId.value = null
+        persistProject()
     }
 
     fun deleteScreen(screenId: String) {
         saveSnapshot()
         _project.update { it.deleteScreen(screenId) }
         _selectedNodeId.value = null
-    }
-
-    fun loadTemplate(template: AppProject) {
-        saveSnapshot()
-        _project.value = template
-        _selectedNodeId.value = template.currentScreen.rootNode.id
+        persistProject()
     }
 }

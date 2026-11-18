@@ -2,10 +2,12 @@ package com.composecraft.app.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -47,33 +50,33 @@ fun DesignerScreen(
     Scaffold(
         containerColor = Color(0xFF090D16),
         topBar = {
-            // Main Editor Top Toolbar
+            // Main Editor Top Toolbar (Android Studio Style)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF0F172A))
-                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // App Logo & Project Title
+                    // Back to Home Dashboard & Project Title
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Color(0xFF4F46E5),
-                            modifier = Modifier.size(32.dp)
+                        IconButton(
+                            onClick = { viewModel.navigateToHome() },
+                            colors = IconButtonDefaults.iconButtonColors(containerColor = Color(0xFF1E293B)),
+                            modifier = Modifier.size(36.dp)
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Text("C", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                            }
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Home", tint = Color(0xFF00F2FE), modifier = Modifier.size(18.dp))
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
                         Column {
                             Text(
-                                text = "ComposeCraft",
+                                text = project.name,
                                 color = Color.White,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold
@@ -240,7 +243,7 @@ fun DesignerScreen(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "Add Component", modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Add Widget", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("+ Add Widget", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
 
                     // If node is selected, show "Properties" Button
@@ -267,7 +270,6 @@ fun DesignerScreen(
                             )
                         }
                     } else {
-                        // Quick Tip / Status
                         Text(
                             text = if (isDesignMode) "Tap widget to style" else "Testing interactions",
                             fontSize = 11.sp,
@@ -290,32 +292,107 @@ fun DesignerScreen(
                 screenName = currentScreen.name,
                 modifier = Modifier.fillMaxSize()
             ) {
-                DynamicCanvasRenderer(
-                    node = currentScreen.rootNode,
-                    isDesignMode = isDesignMode,
-                    selectedNodeId = selectedNodeId,
-                    isFreeFormMode = isFreeFormMode,
-                    onSelectNode = { clickedNode ->
-                        viewModel.selectNode(clickedNode.id)
-                    },
-                    onMoveNode = { id, x, y ->
-                        viewModel.moveNodeFreeForm(id, x, y)
-                    },
-                    onActionTriggered = { actionType, actionTarget ->
-                        when (actionType) {
-                            "TOAST" -> Toast.makeText(context, actionTarget.ifBlank { "Action Triggered!" }, Toast.LENGTH_SHORT).show()
-                            "NAVIGATE" -> {
-                                val targetScreen = project.screens.find { it.name.equals(actionTarget, true) || it.id == actionTarget }
-                                if (targetScreen != null) {
-                                    viewModel.switchScreen(targetScreen.id)
-                                    Toast.makeText(context, "Navigated to ${targetScreen.name} 📱", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(context, "Navigation target: $actionTarget", Toast.LENGTH_SHORT).show()
+                Box(modifier = Modifier.fillMaxSize()) {
+                    // Check if canvas is completely empty
+                    val isBlankCanvas = currentScreen.rootNode.children.isEmpty()
+
+                    if (isBlankCanvas && isDesignMode) {
+                        // Empty Canvas Guidance Overlay
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0xFF0F172A))
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(64.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF1E293B)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        tint = Color(0xFF00F2FE),
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Blank Canvas",
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Start designing your screen by adding widgets\n(3D Orb, Waveform, Buttons, Sliders, Cards...)",
+                                    color = Color(0xFF94A3B8),
+                                    fontSize = 12.sp,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.padding(top = 6.dp)
+                                )
+                                Spacer(modifier = Modifier.height(20.dp))
+                                Button(
+                                    onClick = { showPaletteSheet = true },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00F2FE)),
+                                    shape = RoundedCornerShape(14.dp),
+                                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)
+                                ) {
+                                    Text("+ Add First Component", color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                 }
                             }
                         }
+                    } else {
+                        // Render UI Element Hierarchy
+                        DynamicCanvasRenderer(
+                            node = currentScreen.rootNode,
+                            isDesignMode = isDesignMode,
+                            selectedNodeId = selectedNodeId,
+                            isFreeFormMode = isFreeFormMode,
+                            onSelectNode = { clickedNode ->
+                                viewModel.selectNode(clickedNode.id)
+                            },
+                            onMoveNode = { id, x, y ->
+                                viewModel.moveNodeFreeForm(id, x, y)
+                            },
+                            onActionTriggered = { actionType, actionTarget ->
+                                when (actionType) {
+                                    "TOAST" -> Toast.makeText(context, actionTarget.ifBlank { "Action Triggered!" }, Toast.LENGTH_SHORT).show()
+                                    "NAVIGATE" -> {
+                                        val targetScreen = project.screens.find { it.name.equals(actionTarget, true) || it.id == actionTarget }
+                                        if (targetScreen != null) {
+                                            viewModel.switchScreen(targetScreen.id)
+                                            Toast.makeText(context, "Navigated to ${targetScreen.name} 📱", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "Navigation target: $actionTarget", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            }
+                        )
                     }
-                )
+
+                    // Floating quick '+' FAB on canvas
+                    if (isDesignMode && !isBlankCanvas) {
+                        FloatingActionButton(
+                            onClick = { showPaletteSheet = true },
+                            containerColor = Color(0xFF00F2FE),
+                            contentColor = Color(0xFF0F172A),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(16.dp)
+                                .size(48.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Widget")
+                        }
+                    }
+                }
             }
         }
     }
@@ -352,7 +429,7 @@ fun DesignerScreen(
         TemplatePickerModal(
             onDismiss = { showTemplateDialog = false },
             onSelectTemplate = { t ->
-                viewModel.loadTemplate(t)
+                viewModel.cloneSampleProject(t)
                 showTemplateDialog = false
             }
         )
@@ -407,7 +484,7 @@ fun TemplatePickerModal(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Select a ready-made design to load into the workspace:", color = Color.Gray, fontSize = 12.sp)
+                Text("Select a ready-made design to clone into your workspace:", color = Color.Gray, fontSize = 12.sp)
 
                 // 3D AI Assistant Template (Highlight!)
                 TemplateCard(
